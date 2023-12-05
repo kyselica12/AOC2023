@@ -1,9 +1,8 @@
 module Main where
 
 import Data.List.Split (splitOn, chunksOf)
-import Data.List
+import Data.List (find)
 import qualified Data.Map as M
-import Debug.Trace (trace)
 
 type Range = (Int, Int)
 
