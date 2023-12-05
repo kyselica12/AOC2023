@@ -69,4 +69,3 @@ main = do
     let part2 = minimum $ map (movePart2 ranges) seeds'
     print $ "Part 1: " ++ show part1
     print $ "Part 2: " ++ show part2
-    return ()
