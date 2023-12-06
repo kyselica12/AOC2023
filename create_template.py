@@ -26,8 +26,8 @@ main = do
     input <- readFile "input.txt"
     let parsed = parseInput input
     print "Day {args.idx:02}"
-    -- print $ \"Part 1: \" ++ (show $ part1 parsed)"
-    -- print $ \"Part 2: \" ++ (show $ part2 parsed)"
+    -- print $ \"Part 1: \" ++ (show $ part1 parsed)
+    -- print $ \"Part 2: \" ++ (show $ part2 parsed)
 
 """
 

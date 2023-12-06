@@ -1,4 +1,4 @@
- module Main where
+module Main where
 
 import Data.List.Split (splitOn)
 import Data.List
@@ -26,6 +26,21 @@ boatRaceBS t d = end - start
         start = binarySearch 0 t (\x -> x*(t-x) > d)
         end = binarySearch start t (\x -> x*(t-x) <= d)
 
+{--
+Solution using Quadratic equation
+x * (t-x) = d -> two solutions for two boarders
+x^2 - tx + d = 0 
+--}
+
+boatRaceQE :: Int -> Int -> Int
+boatRaceQE t d =
+    let (s1, s2) = solve 1  (fromIntegral (-t) :: Float) (fromIntegral d :: Float)
+        start = fromIntegral (round s1) :: Int
+        end = fromIntegral (round s2) :: Int
+    in  end - start - 1 
+    where
+        solve a b c = let d = sqrt (b^2 - 4*a*c) in ((-b - d) / (2*a), (-b + d) / (2*a))
+
 part1 :: [(Int, Int)] -> Int
 part1 races = product $ map (uncurry boatRaceBS) races
 
@@ -39,7 +54,7 @@ part1 races = product $ map (uncurry boatRaceBS) races
 
 -- Instanteous :)
 part2 :: Int -> Int -> Int
-part2 = boatRaceBS
+part2 = boatRaceQE
 
 main :: IO ()
 main = do
