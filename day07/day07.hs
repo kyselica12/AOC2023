@@ -3,22 +3,22 @@
 import Data.List.Split (splitOn)
 import Data.List
 import qualified Data.Map as M
+import Data.Maybe (isJust)
+import Debug.Trace (trace)
 
 data Card = Card {
     value :: Char
 } deriving (Show)
 
 data Hand = Hand {
-    counter :: M.Map Card Int,
+    counter :: [(Card, Int)],
     cards :: [Card]
 } deriving (Show)
 
--- implement Ord for Card
+-- -- implement Ord for Card
 instance Eq Card where
     (Card v1) == (Card v2) = v1 == v2
 
-allCards = [Card 'A', Card 'K', Card 'Q', Card 'J', Card 'T', Card '9', Card '8', Card '7', Card '6', Card '5', Card '4', Card '3', Card '2']
-allCardsButJ = [Card 'A', Card 'K', Card 'Q', Card 'T', Card '9', Card '8', Card '7', Card '6', Card '5', Card '4', Card '3', Card '2']
 
 instance Ord Card where
     (Card v1) `compare` (Card v2) = getVal v1 `compare` getVal v2
@@ -33,8 +33,10 @@ instance Ord Card where
                     _ -> read [c] :: Int
 
 instance Eq Hand where
-    (Hand {counter=c1}) == (Hand {counter=c2}) = all (\x -> M.findWithDefault 0 x c1 == M.findWithDefault 0 x c2) allCards
+    (Hand {counter=c1}) == (Hand {counter=c2}) = c1 == c2
 
+showCards :: [Card] -> String
+showCards = map value
 
 instance Ord Hand where
     h1 `compare` h2 = 
@@ -43,91 +45,107 @@ instance Ord Hand where
         else compareCards (cards h1) (cards h2)
         where 
             priority c 
-                | fiveOfAKind c = 9
-                | fourOfAKind c = 8
-                | fullHouse c = 7
-                | threeOfAKind c = 4
-                | twoPairs c = 3
-                | pair c = 2
-                | highCard c = 1
-                | otherwise = 0 
+                | fiveOfAKind c = trace (show (showCards (cards c)) ++ " Five") 9
+                | fourOfAKind c = trace (show (showCards (cards c)) ++ " Four") 8
+                | fullHouse c = trace (show (showCards (cards c)) ++ " FullHouse")7
+                | threeOfAKind c = trace (show (showCards (cards c)) ++ " Three")4
+                | twoPairs c =trace (show (showCards (cards c)) ++ " TwoTwo") 3
+                | pair c =trace (show (showCards (cards c)) ++ " Two") 2
+                | highCard c =trace (show (showCards (cards c)) ++ " High") 1
+                | otherwise = trace (show (showCards (cards c)) ++ " ----")0 
             compareCards (x:xs) (y:ys) = if x == y then compareCards xs ys else x `compare` y
             compareCards [] [] = EQ
 
 
 fiveOfAKind :: Hand ->  Bool
-fiveOfAKind h@(Hand {counter=c}) = 
-    let js = M.findWithDefault 0 (Card 'J') c
-    in if any (\x -> M.findWithDefault 0 x c == 5) allCards then True 
-    else case js of
-        1 -> fourOfAKind (Hand {counter=M.insert (Card 'J') (js-1) c, cards=cards h})
-        2 -> threeOfAKind (Hand {counter=M.insert (Card 'J') (js-2) c, cards=cards h})
-        3 -> pair (Hand {counter=M.insert (Card 'J') (js-3) c, cards=cards h})
-        4 -> True
+fiveOfAKind h@(Hand co ca) = if snd (head co) == 5 then True else 
+    let cJ = find (\(c, i) -> c == Card 'J') co
+    in case cJ of
+        (Just (_, 4)) -> True
+        (Just (_, n)) -> let x = if n == 1 then [] else [(Card 'J', n-1)]
+            in fourOfAKind (Hand ((filter ((/= Card 'J').fst) co)++x) ca)
+        Nothing -> False
 
 fourOfAKind :: Hand -> Bool
-fourOfAKind h@(Hand {counter=c}) = 
-    let js = M.findWithDefault 0 (Card 'J') c
-    in if any (\x -> M.findWithDefault 0 x c == 4) allCards then True 
-    else case js of
-        1 -> threeOfAKind (Hand {counter=M.insert (Card 'J') (js-1) c, cards=cards h})
-        2 -> pair (Hand {counter=M.insert (Card 'J') (js-2) c, cards=cards h})
-        3 -> True
+fourOfAKind h@(Hand co ca) = if snd (head co) == 4 then True else
+    let cJ = find (\(c, i) -> c == Card 'J') co
+    in case cJ of
+        (Just (_, 3)) -> True
+        (Just (_, n)) -> let x = if n == 1 then [] else [(Card 'J', n-1)]
+            in threeOfAKind (Hand ((filter ((/= Card 'J').fst) co)++x) ca)
+        Nothing -> False
 
 threeOfAKind :: Hand -> Bool
-threeOfAKind h@(Hand {counter=c}) = 
-    let js = M.findWithDefault 0 (Card 'J') c
-    in if any (\x -> M.findWithDefault 0 x c == 3) allCards then True
-    else case js of
-        1 -> pair (Hand {counter=M.insert (Card 'J') (js-1) c, cards=cards h})
-        2 -> True
+threeOfAKind h@(Hand co ca) = if snd (head co) == 3 then True else
+    let cJ = find (\(c, i) -> c == Card 'J') co
+    in case cJ of
+        (Just (_, 2)) -> True
+        (Just (_, n)) -> let x = if n == 1 then [] else [(Card 'J', n-1)]
+            in pair (Hand ((filter ((/= Card 'J').fst) co)++x) ca)
+        Nothing -> False
 
 twoPairs :: Hand -> Bool
-twoPairs h@(Hand {counter=c}) =
-    let js = M.findWithDefault 0 (Card 'J') c
-    in length (filter (\x -> M.findWithDefault 0 x c == 2) allCards) == 2 then True
-    else case js of
-        1 -> pair (Hand {counter})
-        2 -> True
+twoPairs h@(Hand co ca) = if snd (head co) == 2 && pair (Hand (tail co) ca) then True else
+    let cJ = find (\(c, i) -> c == Card 'J') co
+    in case cJ of
+        (Just (_, 2)) -> True
+        (Just (_, 1)) -> snd (head co) == 2
+        Nothing -> False
 
 pair :: Hand -> Bool
-pair (Hand {counter=c}) = 
-    let js = M.findWithDefault 0 (Card 'J') c
-    in if any (\x -> M.findWithDefault 0 x c == 2) allCards then True
-    else case js of
-        1 -> True
-
-fullHouse :: Hand -> Bool
-fullHouse h = threeOfAKind h && pair h
+pair h@(Hand co ca) = if snd (head co) == 2 then True else
+    case find (\(c, i) -> c == Card 'J') co of
+        (Just (_, 1)) -> True
+        Nothing -> False
+        _ -> error $ show co ++ "pair"
 
 highCard :: Hand -> Bool
-highCard h = all (\x -> M.findWithDefault 1 x (counter h) == 1) allCards
+highCard h@(Hand co ca) = length co == 5
 
 
--- parseInput :: [Char] -> [[]]
-parseInput content =
+fullHouse :: Hand -> Bool
+fullHouse h = let (x:y:xs) = counter h in if snd x == 3 && snd y == 2 then True else
+    let rest = filter ((/= Card 'J').fst) (counter h)
+    in 
+    case find (\(c, i) -> c == Card 'J') (counter h) of
+        (Just (_, 1)) -> twoPairs (Hand rest (cards h))
+        (Just (_, 2)) -> pair (Hand rest (cards h))
+        Nothing -> False
+        x -> error $ show (counter h) ++ " " ++ show x ++ " fullHouse"
+
+
+countOccurences :: [Char] -> Char -> Int
+countOccurences cs c = length . filter (==c) $ cs
+
+parseInput :: [Char] -> [(Hand, Int)]
+parseInput content = 
     let (hands, values) = (\[x,y] -> (x,y))  $ transpose $ map words (lines content)
-        hands' = map  (map (\x -> Card {value=x})) hands
-    in (map (parseHand M.empty) hands', map read values :: [Int])
-    where 
-        -- parseHand :: M.Map Card Int -> [String] -> Hand
-        parseHand m xs = 
-            let x = foldl (\m' x -> M.insert x ((M.findWithDefault 0 x m')+1) m' ) m xs
-            in Hand {counter=x, cards=xs}
+        hands' = nub $ map (\(xs, f) -> reverse $ sortOn snd $ map (\x-> (Card x, f x)) (nub xs)) $ map (\x -> (x, countOccurences x))  hands
+        hands''= map (\(co, ca) -> Hand co (map Card ca)) $ zip hands' hands
+    in zip hands'' (map read values :: [Int])
 
-part1 :: ([Hand], [Int]) -> Int
-part1 (hands, values) = 
-    let sortedV = map snd $ sortOn fst $ zip hands values
-    in sum $ zipWith (*) sortedV [1..]
 
+
+-- part1 :: [(Hand, Int)] -> [String]
+
+part1 :: [(Hand, Int)] -> Int
+part1 input = 
+    let sortedV = map snd $ sortOn fst $ input
+        sortedH = map fst $ sortOn fst $ input
+        x = zipWith (*) sortedV [1..]
+
+    -- in map (\x ->  (map (value)) $ cards x) sortedH 
+    in sum  $ zipWith (*) sortedV [1..]
+
+part2 :: a
 part2 = undefined
 
 
 main :: IO ()
 main = do
-    input <- readFile "day07/input.txt"
+    input <- readFile "day07/example.txt"
     let parsed = parseInput input
     print "Day 07"
-    print $ "Part 1: " ++ (show $ part1 parsed)
-    -- print $ "Part 2: " ++ (show $ part2 parsed)
-
+    print $ part1 parsed
+    -- print $ "Part 1: " ++ (show $ part1 parsed)
+    print $ "Part 2: " ++ (show $ part1 parsed)
