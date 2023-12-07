@@ -18,19 +18,19 @@ value' c = case c of
     n -> if n == 'J' then error "JJJJ" else value n
 
 createHistogram :: [Char] -> [(Char, Int)]
-createHistogram = sortOn snd . map (\x-> (head x, length x)) . group . sort
+createHistogram = reverse . sortOn snd . map (\x-> (head x, length x)) . group . sort
 
-handValue :: (String, Int) -> Int
-handValue input = case map snd . createHistogram.fst $ input of
-    [5] -> 9
-    [1,4] -> 8
-    [2,3] -> 7
-    [1,1,3] -> 4
-    [1,2,2] -> 3
-    [1,1,1,2] -> 2
-    [1,1,1,1,1] -> 1
+handValue :: (String, Int) -> [Int]
+handValue input = map snd . createHistogram.fst $ input
+    -- [5] -> 9
+    -- [1,4] -> 8
+    -- [2,3] -> 7
+    -- [1,1,3] -> 4
+    -- [1,2,2] -> 3
+    -- [1,1,1,2] -> 2
+    -- [1,1,1,1,1] -> 1
 
-handValue' :: (String, Int) -> Int
+handValue' :: (String, Int) -> [Int]
 handValue' (hand, bid) =
     let hist = createHistogram hand
         j = find ((== 'J').fst) hist
@@ -39,7 +39,7 @@ handValue' (hand, bid) =
         Just (_, n) ->
             let h' = filter (/='J') hand
                 hist' = createHistogram h'
-                app = replicate n (fst $ last hist')
+                app = replicate n (fst $ head hist')
             in case hist' of
                 [] -> handValue (hand, bid)
                 _ -> handValue (h'++app, bid)
