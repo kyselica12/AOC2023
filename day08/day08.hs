@@ -1,27 +1,23 @@
 module Main where
-
-import Data.List.Split (splitOn)
 import Data.List
 import qualified Data.Map as M
+import Text.Parsec
 
-parseInput :: String -> (String, M.Map String (String, String))
-parseInput content =
-    let [moves, graph] = splitOn "\n\n" content
-    in (moves,M.fromList $ map parseOne $ lines graph)
-    where
-        parseOne g =
-            let [from, to] = splitOn " = " g
-                [left, right] = splitOn ", " (tail $ init to)
-            in (from, (left, right))
+inputParser :: Parsec String () (String,  M.Map String (String, String))
+inputParser = (\x y -> (x, M.fromList y)) <$> (many1 (letter <|> digit) <* string "\n\n") <*> (sepBy1 parseNode (string "\n") <* eof)
+
+parseNode :: Parsec String () (String, (String, String))
+parseNode = (,) <$> many1 (letter <|> digit) <*>  (string " = " *> parseTuple)
+
+parseTuple :: Parsec String () (String, String)
+parseTuple = (\[x,y]->(x,y)) <$> (string "(" *> sepBy1 (many1 (letter <|> digit)) (string ", ")) <* string ")"
 
 infiniteMoves :: String -> String
 infiniteMoves moves = moves ++ infiniteMoves moves
 
 move :: M.Map String (String, String) -> String -> String -> Int
-move g (m:ms) node
-    | last node == 'Z' = 0
-    | m == 'L' = 1 + move g ms (fst $ g M.! node)
-    | m == 'R' = 1 + move g ms (snd $ g M.! node)
+move _ _ [_,_,'Z'] = 0
+move g (m:ms) node = let f = if m == 'L' then fst else snd in 1 + move g ms (f $ g M.! node)
 
 countMoves :: String -> M.Map String (String, String) -> [String] -> [Int]
 countMoves moves g = map (move g (infiniteMoves moves) )
@@ -30,13 +26,11 @@ part1 :: (String , M.Map String (String, String)) -> Int
 part1 (moves,g) = move g (infiniteMoves moves) "AAA"
 
 part2 :: (String , M.Map String (String, String)) -> Int
-part2 (moves, g) = (foldl lcm 1 . countMoves moves g . filter (\x -> last x == 'Z' ))  (M.keys g)
+part2 (moves, g) = (foldl1 lcm . countMoves moves g . filter (\x -> last x == 'A' ))  (M.keys g)
 
 main :: IO ()
 main = do
-    input <- readFile "day08/input.txt"
-    let parsed = parseInput input
-    print "Day 08"
-    print $ "Part 1: " ++ show (part1 parsed)
-    print $ "Part 2: " ++ show (part2 parsed)
-
+    parsed <- parse inputParser "PARSE ERROR" <$> readFile "day08/input.txt"
+    let input = either (error . show) id parsed
+    print $ "Part 1: " ++ show (part1 input)
+    print $ "Part 2: " ++ show (part2 input)
