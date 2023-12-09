@@ -9,7 +9,7 @@ parser.add_argument("idx",type=int, help="Number of the day")
 args = parser.parse_args()
 
 template =\
-f""" module Main where 
+f"""module Main where 
 
 import Data.List.Split (splitOn)
 import Data.List 
