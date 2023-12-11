@@ -1,47 +1,30 @@
-module Main where 
+module Main where
+import Data.List ( sortOn )
 
-import Data.List.Split (splitOn)
-import Data.List 
-import GHC.Parser.Lexer (xset)
-import Debug.Trace (trace)
+type Pos = (Int, Int)
 
--- parseInput :: String -> [(Int, Int)]
+parseInput :: String -> [(Int, Int)]
 parseInput content = [(i,j) | (i,xs) <- zip [0..] (lines content), (j,x) <- zip [0..] xs, x == '#' ]
 
--- part1 :: ([(Int, Int)], Int, Int) -> Int
-part1 stars =  dist expandedCols `div` 2
-    where
-        sortStarsRows = sortOn fst stars
-        expandRows e ((x1,x2):y@(y1,y2):xs) = 
-            if y1 - x1 <= 1 then (x1+e,x2):expandRows e (y:xs) else (x1+e,x2):expandRows ((e+(y1-x1-1))) (y:xs) 
-        expandRows e [(x1,x2)] = [(x1+e,x2)]
-        expandedRows = expandRows 0 sortStarsRows
-        expandCols e (x@(x1,x2):y@(y1,y2):xs) = 
-            if y2 - x2 <= 1 then (x1,x2+e):expandCols e (y:xs) else (x1,x2+e):expandCols ((e+y2-x2-1)) (y:xs) 
-        expandCols e [(x1,x2)] = [(x1,x2+e)]
-        expandedCols = expandCols 0 $ sortOn snd expandedRows
-        dist xs = sum [ abs(y1-x1) + abs(y2-x2) | (x1,x2) <- xs, (y1,y2) <- xs] 
+updateStar :: Bool -> Int -> Pos -> Pos
+updateStar updateRow d (x,y)
+    | updateRow  = (x+d,y)
+    | otherwise  = (x,y+d)
 
-part2 stars' =  dist expandedCols `div` 2
+expandSpace :: Int -> [Pos] -> [Pos]
+expandSpace scale = aux snd (updateStar False) 0 . sortOn snd . aux fst (updateStar True) 0 . sortOn fst
     where
-        stars = map (\(x,y) -> (toInteger x, toInteger y)) stars'
-        sortStarsRows = sortOn fst stars
-        expandRows e ((x1,x2):y@(y1,y2):xs) = 
-            if y1 - x1 <= 1 then (x1+e,x2):expandRows e (y:xs) else (x1+e,x2):expandRows ((e+(y1-x1-1)*(1000000-1))) (y:xs) 
-        expandRows e [(x1,x2)] = [(x1+e,x2)]
-        expandedRows = expandRows 0 sortStarsRows
-        expandCols e (x@(x1,x2):y@(y1,y2):xs) = 
-            if y2 - x2 <= 1 then (x1,x2+e):expandCols e (y:xs) else (x1,x2+e):expandCols (e+(y2-x2-1)*(1000000 - 1)) (y:xs) 
-        expandCols e [(x1,x2)] = [(x1,x2+e)]
-        expandedCols = expandCols 0 $ sortOn snd expandedRows
-        dist xs = sum [ abs(y1-x1) + abs(y2-x2) | (x1,x2) <- xs, (y1,y2) <- xs] 
+        aux f uf e (x:y:xs)
+            |  f y - f x <= 1 = uf e x:aux f uf e (y:xs)
+            | otherwise =  uf e x:aux f uf (e+(f y-f x-1)*(scale -1)) (y:xs)
+        aux f uf e [x] = [uf e x]
+
+dist :: [Pos] -> Int
+dist ((x,y):xs) = (sum .map (\(x',y') -> abs (x-x') + abs (y-y'))) xs + dist xs
+dist [] = 0
 
 main :: IO ()
 main = do
-    input <- readFile "day11/input.txt"
-    let parsed = parseInput input
-    print "Day 11"
-    -- print parsed
-    print $ "Part 1: " ++ (show $ part1 parsed)
-    print $ "Part 2: " ++ (show $ part2 parsed)
-
+    parsed <- parseInput <$> readFile "day11/input.txt"
+    print $ "Part 1: " ++ show ((dist.expandSpace 2) parsed)
+    print $ "Part 2: " ++ show ((dist.expandSpace 1000000) parsed)
