@@ -1,4 +1,4 @@
-module Main where
+module Main (main) where
 
 import Data.List.Split (splitOn)
 import Data.List
@@ -11,6 +11,7 @@ import Debug.Trace (trace)
 import System.TimeIt
 
 type Pos = (Int, Int)
+data Dir = U | D | L | R | Stop deriving (Show, Eq)
 
 parseInput :: String -> (Pos, Array Pos Char)
 parseInput input = (start, arr)
@@ -20,38 +21,38 @@ parseInput input = (start, arr)
           arr = listArray ((0,0), (nr-1, nc-1)) $ concat rows
           start = fst . head . filter ((=='S').snd) $ assocs arr
 
-move :: Array Pos Char -> Pos -> Pos -> Maybe Pos
-move arr from@(f1, f2) p@(p1, p2) =
-    let (i',j') = case arr ! p of
-            '|' -> case from of
-                (f1', f2') | f2' == p2 && f1'-1==p1 -> (p1-1, p2)
-                (f1', f2') | f2' == p2 && f1'+1==p1 -> (p1+1, p2)
-                _ -> (-1,-1)
-            '-' -> case from of
-                (f1', f2') | f1' == p1 && f2'-1==p2 -> (p1, p2-1)
-                (f1', f2') | f1' == p1 && f2'+1==p2 -> (p1, p2+1)
-                _ -> (-1,-1)
-            'L' -> case from of
-                (f1', f2') | f2' == p2 && f1'+1==p1 -> (p1, p2+1)
-                (f1', f2') | f1' == p1 && f2'-1==p2 -> (p1-1, p2)
-                _ -> (-1,-1)
-            'J' -> case from of
-                (f1', f2') | f2' == p2 && f1'+1==p1 -> (p1, p2-1)
-                (f1', f2') | f1' == p1 && f2'+1==p2 -> (p1-1, p2)
-                _ -> (-1,-1)
-            '7' -> case from of
-                (f1', f2') | f2' == p2 && f1'-1==p1 -> (p1, p2-1)
-                (f1', f2') | f1' == p1 && f2'+1==p2 -> (p1+1, p2)
-                _ -> (-1,-1)
-            'F' -> case from of
-                (f1', f2') | f2' == p2 && f1'-1==p1 -> (p1, p2+1)
-                (f1', f2') | f1' == p1 && f2'-1==p2 -> (p1+1, p2)
-                _ -> (-1,-1)
-            '.' -> (-1,-1)
-            _ -> error "Invalid move"
-        ((minI, minJ), (maxI, maxJ)) = bounds arr
-        in if minI <= i' && i' <= maxI && minJ <= j' && j' <= maxJ then Just (i', j') else Nothing
+getDir :: Pos -> Pos -> Dir
+getDir s@(s1,s2) d@(d1,d2) = case (d1-s1, d2-s2) of 
+    (1,0) -> D 
+    (-1,0) -> U
+    (0,1) -> R
+    (0,-1) -> L
+    _ -> Stop
 
+moveInDir :: Dir -> Pos -> Pos
+moveInDir U (x,y) = (x-1,y)
+moveInDir D (x,y) = (x+1,y)
+moveInDir L (x,y) = (x,y-1)
+moveInDir R (x,y) = (x,y+1)
+
+inBounds :: Array Pos Char -> Pos -> Bool
+inBounds arr (x,y) = 
+    let (maxI, maxJ) = snd (bounds arr)
+    in x >= 0 && y >=0 && x <= maxI && y <= maxJ
+
+move :: Array Pos Char -> Pos -> Pos -> Maybe Pos
+move arr s@(s1, s2) d@(d1,d2) = 
+    let outDir = pipeFlow (getDir s d)
+        next = moveInDir outDir d
+    in if outDir == Stop || not (inBounds arr next) then Nothing else Just next
+    where 
+        pipeFlow dir = case arr ! d of 
+            '|' -> if dir == U || dir == D then dir else Stop
+            '-' -> if dir == R || dir == L then dir else Stop
+            'L' -> if dir == D then R else if dir == L then U else Stop
+            'J' -> if dir == D then L else if dir == R then U else Stop
+            '7' -> if dir == U then L else if dir == R then D else Stop
+            'F' -> if dir == U then R else if dir == L then D else Stop
 
 part1 :: (Pos, Array Pos Char) -> Int
 part1 (s@(s1, s2), arr) =
@@ -65,7 +66,7 @@ loop arr path@(prev:_) curr =
     else do
         x <- move arr prev curr
         loop arr (curr: path) x
-
+        -- trace (show prev ++ show curr ++ show (arr!curr) ++ "->" ++show x ++ show (move2 arr prev curr)) loop arr (curr: path) x
 expandPath :: [Pos] -> [Pos]
 expandPath ((x1,x2):(y1,y2):rest) = (x1*2,x2*2):(x1*2+y1-x1, x2*2+y2-x2):expandPath ((y1,y2):rest)
 expandPath [(x1,x2)] = [(x1*2,x2*2)]
