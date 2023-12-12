@@ -4,16 +4,16 @@ import Data.List
 import Data.List.Split (splitOn)
 import Data.Map qualified as M
 import System.TimeIt (timeIt)
+import Debug.Trace (trace)
 
 parseInput :: String -> [(String, [Int])]
 parseInput = map ((\[m, x] -> (m, map read (splitOn "," x))) . words) . lines
 
 part1 = sum . map solveRow
+unfold (ms, ns) = (intercalate "?" (replicate 5 ms), concat (replicate 5 ns))
 
 part2 :: [(String, [Int])] -> Int
 part2 = sum . map (solveRow . unfold)
-  where
-    unfold (ms, ns) = (intercalate "?" (replicate 5 ms), concat (replicate 5 ns))
 
 solveRow :: (String, [Int]) -> Int
 solveRow (input,ns) = mem M.! (ns, 0, input)
@@ -38,9 +38,9 @@ main :: IO ()
 main = do
   input <- readFile "day12/input.txt"
   let parsed = parseInput input
+  let xxx = map (solveRow . unfold) parsed
   print "Day 12"
-  -- print $ parsed
-  -- print $ uncurry solveRow $ last parsed
   timeIt $ print $ "Part 1: " ++ show (part1 parsed)
-  -- print $ uncurry part2 $ head parsed
-  timeIt $ print $ "Part 2: " ++ show (part2 parsed)
+  print xxx
+  print $ sum xxx
+--   timeIt $ print $ "Part 2: " ++ (show $ part2 parsed)
