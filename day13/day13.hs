@@ -1,44 +1,43 @@
 module Main where
 
 import Data.List.Split (splitOn)
-import qualified Data.Map as M
 import Data.List
 import Debug.Trace (trace)
 import Data.Maybe (fromJust)
+import Control.Applicative 
 
 parseInput :: String -> [[String]]
 parseInput input = map lines $ splitOn "\n\n" input
 
+equal (a:as,b:bs) = (a == b) && equal (as,bs)
+equal _ = True
 
+difference1 (a:as,b:bs) = case foldl (\acc (x,y) -> if x/=y then acc+1 else acc) 0 (zip a b) of
+                            0 -> difference1 (as,bs)
+                            1 -> equal (as,bs)
+                            _ -> False
+difference1 _ = False
 
 part1 :: [[String]] -> Int
-part1 input = trace (show xxxx) sum xxxx
+part1 = sum . map (solveBlock aux)
     where
-        xxxx = map solveBlock input
-        solveBlock block = 
-            case trace (show (map (\i-> (i, aux i block)) [1.. length block-1])) find (\i-> aux i block) (reverse [1..length block-1]) of
-            Just i -> 100 *i
-            Nothing -> case (find (\i-> aux i (transpose block)) [1..length block-1]) of 
-                Just j -> j
-                Nothing -> 0
-        aux :: Int -> [String] -> Bool
-        aux i block =
-            let d = min i (n-i)
-                x = take d $ drop i block
-                y = take d $ reverse (take i block)
-                n = length block
-            in  y == x
+        aux i block = let (a,b) = splitAt i block in  equal (reverse a, b)
 
+solveBlock :: (Int -> [String] -> Bool) -> [String] -> Int
+solveBlock f block = fromJust $ col <|> ((*100) <$> row) 
+    where 
+        row = find (`f` block) [1..length block-1]
+        col = find (`f` transpose block) [1..length (head block)-1]
 
-part2 = undefined
-
+part2 :: [[String]] -> Int
+part2 = sum . map (solveBlock aux)
+    where
+        aux i block = let (a,b) = splitAt i block in difference1 (reverse a, b) && not (equal (reverse a, b))
 
 main :: IO ()
 main = do
-    input <- parseInput <$> readFile "day13/example.txt"
+    input <- parseInput <$> readFile "day13/input.txt"
     print "Day 13"
-    -- print input
-    print $ head input
-    print $ "Part 1: " ++ (show $ part1 input)
-    -- print $ "Part 2: " ++ (show $ part2 parsed)
+    print $ "Part 1: " ++ show (part1 input)
+    print $ "Part 2: " ++ show (part2 input)
 
