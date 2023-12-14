@@ -2,42 +2,29 @@ module Main where
 
 import Data.List
 import qualified Data.Map as M
-import System.TimeIt (timeIt)
 
-tiltRow :: String -> String
-tiltRow xs = case span (/='#') xs of
-    (a,[]) -> reverse $ sort a
-    (a,b) -> reverse (sort a) ++ '#' : tiltRow (tail b)
-    
-tilt, tiltWest, tiltNorth, tiltEast, tiltSouth :: [String] -> [String]
-tilt = map tiltRow
-tiltWest = tilt
-tiltNorth = transpose . tilt . transpose
-tiltEast = map reverse . tilt . map reverse
-tiltSouth = transpose . map reverse . tilt . map reverse . transpose
+tilt:: [String] -> [String]
+tilt = transpose . map tiltRow . transpose
+    where tiltRow xs = let (a,b) = span (/='#') xs in reverse (sort a) ++ if null b then [] else '#':tiltRow (tail b)
+
+rotateRight :: [[a]] -> [[a]]
+rotateRight = transpose . reverse
 
 oneRound :: [String] -> [String]
-oneRound = tiltEast . tiltSouth . tiltWest . tiltNorth
+oneRound input =  iterate (rotateRight.tilt) input !! 4
 
 load :: [[Char]] -> Int
 load input = sum [s-i | (i,r) <-zip [0..] input, x <- r, x == 'O', let s = length (head input)]
 
-part1 :: [String] -> Int
-part1 = load . tiltNorth
-
-part2 :: [String] -> Int
-part2 input = load $ aux M.empty 1000000000 input
-    where
-    aux _ 1 x = x
-    aux m i x =
-        let r = oneRound x
-        in case M.lookup x m of
-            Just v -> let d = v-i
-                    in if i >= d then aux m (i `mod` d) r else aux m (i-1) r
-            Nothing -> aux (M.insert x i m) (i-1) r
+solve :: M.Map [String] Int -> Int -> [String] -> [String]
+solve _ 1 x = x
+solve m i x = let r = oneRound x
+    in case (\v->v-i) <$> M.lookup x m of
+        Just d -> if i >= d then solve m (i `mod` d) r else solve m (i-1) r
+        Nothing -> solve (M.insert x i m) (i-1) r
 
 main :: IO ()
 main = do
-    input <- lines <$> readFile "day14/input.txt"
-    timeIt $ print $ "Part 1: " ++ show (part1 input)
-    timeIt $ print $ "Part 2: " ++ show (part2 input)
+    input <- lines <$> readFile "input.txt"
+    print $ "Part 1: " ++ show ((load.tilt) input)
+    print $ "Part 2: " ++ show ((load . solve M.empty 1_000_000_000) input)
