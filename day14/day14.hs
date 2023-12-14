@@ -4,6 +4,7 @@ import Data.List.Split (splitOn)
 import Data.List
 import qualified Data.Map as M
 import Debug.Trace (trace)
+import System.TimeIt (timeIt)
 
 parseInput input = (size, map)
     where
@@ -12,14 +13,6 @@ parseInput input = (size, map)
                 (i, l) <- zip [0..] (lines input),
                 (j, c) <- zip [0..] l,
                 c /= '.']
-
-part1 (size, input) = sum $  map (aux size . col) [0..size-1]
-    where
-        aux v (((i,_),c):cs) = case c of
-            'O' -> v + aux (v-1) cs
-            '#' -> aux (size-i-1) cs
-        aux v [] = 0
-        col i = sortOn (fst.fst) . filter ((==i).snd.fst) $ input
 
 rollNorth :: (Int, [((Int,Int),Char)]) -> (Int, [((Int,Int),Char)])
 rollNorth (size,input) = (size,concatMap (aux size . col) [0..size-1])
@@ -31,6 +24,7 @@ rollNorth (size,input) = (size,concatMap (aux size . col) [0..size-1])
         aux v [] = []
         col i = sortOn (fst.fst) . filter ((==i).snd.fst) $ input
 
+rollWest :: (Int, [((Int,Int),Char)]) -> (Int, [((Int,Int),Char)])
 rollWest (size,input) =(size, concatMap (aux size . row) [0..size-1])
     where
         aux v (((i,j),c):cs) = case c of
@@ -39,6 +33,7 @@ rollWest (size,input) =(size, concatMap (aux size . row) [0..size-1])
         aux v [] = []
         row i = sortOn (snd.fst) . filter ((==i).fst.fst) $ input
 
+rollEast :: (Int, [((Int,Int),Char)]) -> (Int, [((Int,Int),Char)])
 rollEast (size,input) = (size, concatMap (aux size . row) [0..size-1])
     where
         aux v (((i,j),c):cs) = case c of
@@ -47,6 +42,7 @@ rollEast (size,input) = (size, concatMap (aux size . row) [0..size-1])
         aux v [] = []
         row i = sortOn ((*(-1)).snd.fst) . filter ((==i).fst.fst) $ input
 
+rollSouth :: (Int, [((Int,Int),Char)]) -> (Int, [((Int,Int),Char)])
 rollSouth (size,input) = (size ,concatMap (aux size . col) [0..size-1])
     where
         aux v (((i,j),c):cs) = case c of
@@ -55,26 +51,32 @@ rollSouth (size,input) = (size ,concatMap (aux size . col) [0..size-1])
         aux v [] = []
         col i = sortOn ((*(-1)).fst.fst) . filter ((==i).snd.fst) $ input
 
-oneRound :: (Int, [((Int, Int), Char)]) -> (Int, [((Int, Int), Char)])
-oneRound = rollEast . rollSouth . rollWest . rollNorth 
-part2 input = part1 $ aux M.empty 1000000000 input
-    where
-    aux _ 0 x = x
-    aux m i x = 
-        let r = oneRound x 
-        in case M.lookup x m of
-            Just v -> let d = v-i 
-                          n = i `div` d 
-                    in if n > 0 then aux m (i-n*d) r else aux m (i-1) r
-            Nothing -> aux (M.insert x i m) (i-1) r
+northLoad :: (Int, [((Int, b), Char)]) -> Int
+northLoad (size, input) = sum $ map (\((i,j),_)-> size-i) $ filter ((=='O').snd) input
 
+oneRound :: (Int, [((Int, Int), Char)]) -> (Int, [((Int, Int), Char)])
+oneRound = rollEast . rollSouth . rollWest . rollNorth
+
+part1 :: (Int, [((Int, Int), Char)]) -> Int
+part1 = northLoad . rollNorth
+
+part2 :: (Int, [((Int, Int), Char)]) -> Int
+part2 input = northLoad $ aux M.empty 1000000000 input
+    where
+    aux _ 1 x = x
+    aux m i x =
+        let r = oneRound x
+        in case M.lookup x m of
+            Just v -> let d = v-i
+                          n = i `div` d
+                    in if n > 0 then 
+                    trace ("Found cycle: "++show (1000000000-i)++" Len: "++show d) aux m (i-n*d) r 
+                    else aux m (i-1) r
+            Nothing -> aux (M.insert x i m) (i-1) r
 
 main :: IO ()
 main = do
-    input <- parseInput <$> readFile "day14/example.txt"
-    -- print input
-    -- print $ "Part 1: " ++ (show $ part1 input)
-    -- print $ oneRound input
-    print $ "Part 2: " ++ (show $ part2 input)
-    return ()
+    input <- parseInput <$> readFile "day14/input.txt"
+    timeIt $ print $ "Part 1: " ++ show (part1 input)
+    timeIt $ print $ "Part 2: " ++ show (part2 input)
 
