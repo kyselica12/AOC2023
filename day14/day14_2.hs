@@ -33,8 +33,7 @@ part2 input = load $ aux M.empty 1000000000 input
         let r = oneRound x
         in case M.lookup x m of
             Just v -> let d = v-i
-                          n = i `div` d
-                    in if n > 0 then aux m (i-n*d) r else aux m (i-1) r
+                    in if i >= d then aux m (i `mod` d) r else aux m (i-1) r
             Nothing -> aux (M.insert x i m) (i-1) r
 
 main :: IO ()
