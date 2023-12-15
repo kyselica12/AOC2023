@@ -12,15 +12,15 @@ part2 :: [String] -> Int
 part2 = sum . map (score.aux []) . createBoxes
     where
         createBoxes = groupBy (\x y -> snd x == snd y) . sortOn snd . map (\x-> (x, computeHash2 x))
-        aux acc ((b,_):bs) =
+        aux acc ((b,h):bs) =
             let (n,a) = span (\c -> c /= '-' && c /= '=') b
             in case findIndex ((==n).fst) acc of
                 Just i -> if head a == '-' then aux (take i acc ++ drop (i+1) acc) bs
-                          else aux (take i acc ++ [(n,read (tail a))] ++ drop (i+1) acc) bs
+                          else aux (take i acc ++ [(n,(h+1)*read (tail a))] ++ drop (i+1) acc) bs
                 Nothing -> if head a == '-' then aux acc bs
-                           else aux (acc ++ [(n,read (tail a))]) bs
+                           else aux (acc ++ [(n,(h+1) *read (tail a))]) bs
         aux acc [] = acc
-        score box = foldl (\a (x,(n,v)) -> let h = computeHash2 n +1 in (a+h*x*v)) 0 $ zip [1..] box
+        score box = foldl (\a (x,(n,v)) -> a+x*v) 0 $ zip [1..] box
 
 main :: IO ()
 main = do
