@@ -6,5 +6,3 @@ session=$(cat session.cookie)
 curl "https://adventofcode.com/2023/day/$1/input" \
   -H "cookie: session=$session" \
   > "$2/input.txt"
-
-val1=8; val2=2
