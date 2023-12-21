@@ -8,6 +8,8 @@ import Debug.Trace (trace)
 
 type Pos = (Int, Int)
 data Dir = N | E | S | W deriving (Show, Eq, Ord)
+
+parseInput :: String -> (A.Array Pos Char, Pos)
 parseInput input = (arr, start)
     where
         rows = lines input
@@ -15,7 +17,6 @@ parseInput input = (arr, start)
         nc = length $ head rows
         arr = A.array ((0,0), (nr-1,nc-1)) [((r,c),x) | (r,row) <- zip [0..] rows, (c,x) <- zip [0..] row]
         start = head [(r,c) | r <- [0..nr-1], c <- [0..nc-1], arr A.! (r,c) == 'S']
-
 
 move :: Dir -> Pos -> Pos
 move dir (r,c) = case dir of
@@ -38,9 +39,7 @@ part1 (arr, start) =length $ map (arr A.!) $ iterate (oneStep arr) [start] !! 64
 
 moveInf :: A.Array Pos Char -> Pos -> [Pos]
 moveInf arr (r,c) =
-    let res = filter (\p -> arr A.! modPos p /= '#') $ map (`move` (r,c)) [N,E,S,W]
-    -- in trace (show ((r,c), modPos (r,c),res, map modPos res)) res
-    in res
+    filter (\p -> arr A.! modPos p /= '#') $ map (`move` (r,c)) [N,E,S,W]
     where modPos (r,c) = (r `mod` (nr+1), c `mod` (nc+1))
           (nr,nc) = snd $ A.bounds arr
 
@@ -48,10 +47,12 @@ modPos :: A.Array Pos Char -> Pos -> Pos
 modPos arr (r,c) = (r `mod` (nr+1), c `mod` (nc+1))
     where (nr,nc) = snd $ A.bounds arr
 
+oneStepInf :: A.Array Pos Char -> S.Set Pos -> S.Set Pos -> S.Set Pos
 oneStepInf arr visited pos = xxxx
     where res = S.fromList $  concatMap (moveInf arr) pos
           xxxx = S.difference (S.fromList (concatMap (moveInf arr) pos)) visited
 
+part2 :: (A.Array Pos Char, Pos) -> Int
 part2 (arr, start) = result
     where
         size = 131
@@ -69,17 +70,17 @@ part2 (arr, start) = result
         (s',a',p',v',f') = fill size  f v p s []
         (s'',a'',p'',v'',f'') = fill size  f' v' p' s' []
         delta = zipWith (-) a'' a'
-        (_, result) = aux (steps - halfSize - (2*size)) delta a'' f'' s''
+        (_, result) = fastForwardToEnd (steps - halfSize - (2*size)) delta a'' f'' s''
 
         interpolateCycle delta prev flag score =
             let next = zipWith (+) delta prev
                 (f,score') = foldl' (\(f,s) x -> if f then (not f, s+x) else (not f, s)) (flag, score) next
             in (next, score',f)
 
-        aux step delta prev flag score =
+        fastForwardToEnd step delta prev flag score =
             let (next, score',f) = interpolateCycle delta prev flag $! score
             in if step < size then (step, score)
-            else aux (step-size) delta next f score'
+            else fastForwardToEnd (step-size) delta next f score'
 
 
 
