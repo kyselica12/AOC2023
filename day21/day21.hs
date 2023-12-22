@@ -53,7 +53,7 @@ oneStepInf arr visited pos = xxxx
           xxxx = S.difference (S.fromList (concatMap (moveInf arr) pos)) visited
 
 part2 :: (A.Array Pos Char, Pos) -> Int
-part2 (arr, start) = result
+part2 (arr, start) = result'
     where
         size = 131
         halfSize = size `div` 2
@@ -71,17 +71,32 @@ part2 (arr, start) = result
         (s'',a'',p'',v'',f'') = fill size  f' v' p' s' []
         delta = zipWith (-) a'' a'
         (_, result) = fastForwardToEnd (steps - halfSize - (2*size)) delta a'' f'' s''
+        (_, result') = fastForwardToEnd' (steps - halfSize - (2*size)) delta a'' f'' s''
 
         interpolateCycle delta prev flag score =
             let next = zipWith (+) delta prev
                 (f,score') = foldl' (\(f,s) x -> if f then (not f, s+x) else (not f, s)) (flag, score) next
             in (next, score',f)
 
+        -- Simple for loop interpolation per cycle 
         fastForwardToEnd step delta prev flag score =
             let (next, score',f) = interpolateCycle delta prev flag $! score
             in if step < size then (step, score)
             else fastForwardToEnd (step-size) delta next f score'
 
+        -- Sum of arithmetic progression
+        fastForwardToEnd' steps delta prev flag score =
+            let n = steps `div` size
+                half = n `div` 2
+            in trace (show (n, half)) foldl (\(f,s) (d, v) -> (not f,s + aux (f,s) (d,v))) (flag, score) (zip delta prev)
+            where
+                n = steps `div` size
+                half = n `div` 2
+                aux (f,s) (d,v) =
+                    let first = if f then v+d else v + 2*d
+                        last = first + (half-1) * 2 * d
+                        res = (first + last) * half `div` 2
+                    in res
 
 
 main :: IO ()
